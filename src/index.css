@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 214 100% 99%;
+  --foreground: 218 37% 17%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 218 37% 17%;
+
+  --primary: 217 90% 56%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 215 76% 95%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 214 32% 95%;
+  --muted-foreground: 217 16% 46%;
+
+  --accent: 216 90% 96%;
+  --accent-foreground: 221 83% 28%;
+
+  --border: 215 34% 89%;
+  --input: 215 34% 89%;
+  --ring: 217 90% 56%;
+
+  --radius: 0.85rem;
+}
+
+* {
+  @apply border-border;
+}
+
+body {
+  @apply min-h-screen bg-background text-foreground antialiased;
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-soft;
+  }
+
+  .animate-delay-1 {
+    animation-delay: 120ms;
+  }
+
+  .animate-delay-2 {
+    animation-delay: 220ms;
+  }
+
+  .animate-delay-3 {
+    animation-delay: 320ms;
+  }
+}
