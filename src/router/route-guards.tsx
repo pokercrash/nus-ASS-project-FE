@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-import { useAuth } from "@/features/auth/auth-context";
+import { useAuth } from "@/features/auth/use-auth";
 
 function BootstrappingScreen() {
   return (
@@ -13,8 +13,12 @@ function BootstrappingScreen() {
   );
 }
 
-export function ProtectedRoute() {
-  const { isAuthenticated, isBootstrapping } = useAuth();
+function homeByRole(role: string | undefined) {
+  return role === "admin" ? "/admin/dashboard" : "/app/dashboard";
+}
+
+export function UserProtectedRoute() {
+  const { isAuthenticated, isBootstrapping, user } = useAuth();
 
   if (isBootstrapping) {
     return <BootstrappingScreen />;
@@ -24,18 +28,54 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
+  if (user?.role === "admin") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
   return <Outlet />;
 }
 
-export function PublicRoute() {
-  const { isAuthenticated, isBootstrapping } = useAuth();
+export function AdminProtectedRoute() {
+  const { isAuthenticated, isBootstrapping, user } = useAuth();
+
+  if (isBootstrapping) {
+    return <BootstrappingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
+  return <Outlet />;
+}
+
+export function PublicUserRoute() {
+  const { isAuthenticated, isBootstrapping, user } = useAuth();
 
   if (isBootstrapping) {
     return <BootstrappingScreen />;
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/app/dashboard" replace />;
+    return <Navigate to={homeByRole(user?.role)} replace />;
+  }
+
+  return <Outlet />;
+}
+
+export function PublicAdminRoute() {
+  const { isAuthenticated, isBootstrapping, user } = useAuth();
+
+  if (isBootstrapping) {
+    return <BootstrappingScreen />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to={homeByRole(user?.role)} replace />;
   }
 
   return <Outlet />;

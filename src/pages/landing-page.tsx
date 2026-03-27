@@ -45,6 +45,9 @@ export function LandingPage() {
         <header className="mb-12 flex items-center justify-between rounded-xl border border-white/60 bg-white/75 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
           <p className="text-sm font-semibold text-primary">Bookly Care</p>
           <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/admin/login">Admin portal</Link>
+            </Button>
             <Button asChild variant="ghost" size="sm">
               <Link to="/login">Sign in</Link>
             </Button>

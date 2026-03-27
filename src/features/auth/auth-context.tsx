@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -19,25 +17,12 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from "./auth-api";
-
-type AuthUser = {
-  username: string;
-  role: string;
-};
-
-type AuthContextValue = {
-  accessToken: string | null;
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  isBootstrapping: boolean;
-  login: (payload: LoginRequest) => Promise<void>;
-  register: (payload: RegisterRequest) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshSession: () => Promise<string>;
-  authorizedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-};
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+import { AuthContext, type AuthContextValue, type AuthUser } from "./auth-store";
+import {
+  ServiceApiError,
+  mapStatusMessage,
+  parseServiceErrorBody,
+} from "@/lib/service-error";
 const SESSION_HINT_KEY = "bookly_has_auth_session";
 
 function setSessionHint(value: boolean) {
@@ -104,7 +89,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const login = useCallback(
     async (payload: LoginRequest) => {
       const data = await loginUser(payload);
+      const loggedInUser = claimsToUser(decodeAccessToken(data.access_token));
       applyAccessToken(data.access_token);
+      return loggedInUser;
     },
     [applyAccessToken]
   );
@@ -137,8 +124,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       };
 
       let response = await execute(accessTokenRef.current);
+      const body = await response.clone().json().catch(() => null);
+      const shouldRefresh = response.status === 401 && body?.action === "refresh";
 
-      if (response.status === 401 && getSessionHint()) {
+      if (shouldRefresh && getSessionHint()) {
         try {
           const newToken = await refreshSession();
           response = await execute(newToken);
@@ -150,6 +139,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return response;
     },
     [clearSession, refreshSession]
+  );
+
+  const authorizedRequest = useCallback(
+    async <T,>(input: RequestInfo | URL, init: RequestInit = {}) => {
+      const response = await authorizedFetch(input, init);
+      const contentType = response.headers.get("content-type") ?? "";
+      const hasJson = contentType.includes("application/json");
+      const payload = hasJson ? await response.json().catch(() => null) : await response.text();
+
+      if (!response.ok) {
+        const parsed = parseServiceErrorBody(payload);
+        const message =
+          parsed?.error ?? parsed?.message ?? parsed?.detail ?? mapStatusMessage(response.status);
+
+        throw new ServiceApiError(response.status, message, payload, parsed?.code, parsed?.action);
+      }
+
+      return payload as T;
+    },
+    [authorizedFetch]
   );
 
   useEffect(() => {
@@ -201,18 +210,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
       logout,
       refreshSession,
       authorizedFetch,
+      authorizedRequest,
     }),
-    [accessToken, user, isBootstrapping, login, register, logout, refreshSession, authorizedFetch]
+    [
+      accessToken,
+      user,
+      isBootstrapping,
+      login,
+      register,
+      logout,
+      refreshSession,
+      authorizedFetch,
+      authorizedRequest,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-
-  return context;
 }

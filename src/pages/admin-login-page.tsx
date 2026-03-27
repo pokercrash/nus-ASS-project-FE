@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { ApiError } from "@/features/auth/auth-api";
 import { useAuth } from "@/features/auth/use-auth";
 
-export function LoginPage() {
+export function AdminLoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -24,9 +24,12 @@ export function LoginPage() {
 
     try {
       const loggedInUser = await login({ username, password });
-      navigate(loggedInUser?.role === "admin" ? "/admin/dashboard" : "/app/dashboard", {
-        replace: true,
-      });
+      if (loggedInUser?.role !== "admin") {
+        await logout();
+        setError("This account does not have admin access.");
+        return;
+      }
+      navigate("/admin/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not sign in.");
     } finally {
@@ -36,29 +39,29 @@ export function LoginPage() {
 
   return (
     <AuthLayout
-      title="User sign in"
-      subtitle="Welcome back. Continue to your user booking dashboard."
-      footerText="No account yet?"
-      footerLinkLabel="Create one"
-      footerLinkTo="/register"
+      title="Admin sign in"
+      subtitle="Sign in with an admin account to manage platform resources."
+      footerText="Regular user?"
+      footerLinkLabel="Go to user sign in"
+      footerLinkTo="/login"
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+          <Label htmlFor="admin-username">Username</Label>
           <Input
-            id="username"
+            id="admin-username"
             autoComplete="username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
-            placeholder="alice"
+            placeholder="admin_user"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="admin-password">Password</Label>
           <Input
-            id="password"
+            id="admin-password"
             type="password"
             autoComplete="current-password"
             value={password}
@@ -71,13 +74,13 @@ export function LoginPage() {
         {error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p> : null}
 
         <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Signing in..." : "Sign in"}
+          {isSubmitting ? "Signing in..." : "Admin sign in"}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
-          Admin user?{" "}
-          <Link to="/admin/login" className="font-medium text-primary hover:underline">
-            Go to admin portal
+          Need user portal?{" "}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            Back to user login
           </Link>
         </p>
       </form>

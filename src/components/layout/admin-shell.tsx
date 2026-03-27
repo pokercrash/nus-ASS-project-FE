@@ -1,51 +1,23 @@
-import { useMemo, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import {
-  BellRing,
-  CalendarDays,
-  Compass,
-  LayoutDashboard,
-  ListChecks,
-  LogOut,
-  Menu,
-  UserCircle2,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { Link, NavLink, Outlet } from "react-router-dom";
+import { LayoutDashboard, LogOut, Menu, ShieldCheck, Wrench, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/features/auth/use-auth";
 
 const navItems = [
-  { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/discover", label: "Find Slots", icon: Compass },
-  { to: "/app/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/app/appointments", label: "My Appointments", icon: ListChecks },
-  { to: "/app/reminders", label: "Reminders", icon: BellRing },
-  { to: "/app/account", label: "Account", icon: UserCircle2 },
+  { to: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
+  { to: "/admin/resources", label: "Resource Management", icon: Wrench },
 ];
 
-function formatDateForHeader(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-export function AppShell() {
-  const [open, setOpen] = useState(false);
+export function AdminShell() {
   const { user, logout } = useAuth();
-  const location = useLocation();
-
-  const activeLabel = useMemo(
-    () => navItems.find((item) => location.pathname.startsWith(item.to))?.label ?? "Dashboard",
-    [location.pathname]
-  );
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(31,114,255,0.22),transparent_35%),radial-gradient(circle_at_90%_20%,rgba(148,197,255,0.24),transparent_40%),linear-gradient(180deg,#fafdff_0%,#f5f8ff_55%,#eef4ff_100%)]" />
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,_rgba(0,94,184,0.18),transparent_35%),linear-gradient(180deg,#f7fbff_0%,#eef6ff_100%)]" />
       <div className="mx-auto flex max-w-[1400px] gap-4 px-3 py-3 sm:px-6 sm:py-6">
         <aside
           className={cn(
@@ -54,13 +26,13 @@ export function AppShell() {
           )}
         >
           <div className="mb-6 flex items-center justify-between">
-            <Link to="/app/dashboard" className="group flex items-center gap-2">
-              <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground animate-float">
-                AB
+            <Link to="/admin/dashboard" className="flex items-center gap-2">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground">
+                <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Appointment</p>
-                <p className="text-sm font-semibold text-foreground">Bookly Care</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Admin</p>
+                <p className="text-sm font-semibold text-foreground">Bookly Console</p>
               </div>
             </Link>
             <button
@@ -95,26 +67,20 @@ export function AppShell() {
           </nav>
 
           <div className="mt-8 rounded-lg border border-border bg-background/80 p-3 text-xs text-muted-foreground">
-            Signed in as <span className="font-semibold text-foreground">{user?.username ?? "guest"}</span>
+            Logged in as <span className="font-semibold text-foreground">{user?.username ?? "admin"}</span>
           </div>
         </aside>
 
         <main className="w-full lg:min-h-[calc(100vh-3rem)]">
           <header className="mb-4 flex items-center justify-between rounded-2xl border border-border/70 bg-white/86 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="rounded-md border border-border p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary lg:hidden"
-                onClick={() => setOpen(true)}
-                aria-label="Open sidebar"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-              <div>
-                <p className="text-sm font-semibold text-foreground">{activeLabel}</p>
-                <p className="text-xs text-muted-foreground">{formatDateForHeader(new Date())}</p>
-              </div>
-            </div>
+            <button
+              type="button"
+              className="rounded-md border border-border p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary lg:hidden"
+              onClick={() => setOpen(true)}
+              aria-label="Open sidebar"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
             <Button variant="outline" size="sm" onClick={() => void logout()}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
