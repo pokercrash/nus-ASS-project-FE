@@ -57,6 +57,7 @@ export type ResourceSummary = {
 
 export type CreateResourceInput = {
   room: string;
+  defaultCapacity: string;
 };
 
 export type CreateResourcePayload = {
@@ -90,6 +91,12 @@ function toTrimmedString(value: unknown): string {
 function toNumber(value: unknown, fallback: number): number {
   const numberValue = typeof value === "number" ? value : Number(value);
   return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+function optionalNumber(value: string, fallback: number): number {
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  return Number(trimmed);
 }
 
 function buildRoomResourceCode(room: string): string {
@@ -206,7 +213,7 @@ export function buildCreateResourcePayload(form: CreateResourceInput): CreateRes
       timezone: DEFAULT_ROOM_LOCATION.timezone,
     },
     slotDurationMin: 30,
-    defaultCapacity: 1,
+    defaultCapacity: optionalNumber(form.defaultCapacity, 1),
     tags: ["room", DEFAULT_ROOM_TYPE],
     metadata: {
       source: "admin-room-form",

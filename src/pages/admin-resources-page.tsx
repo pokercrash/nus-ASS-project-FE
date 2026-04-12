@@ -11,14 +11,17 @@ import {
   createResource,
   ensureResourceAdminAccess,
   listResources,
+  updateResourceStatus,
   validateCreateResourcePayload,
   type CreateResourceInput,
+  type ResourceStatus,
   type ResourceSummary,
 } from "@/features/resources/resource-api";
 import { ServiceApiError } from "@/lib/service-error";
 
 const initialForm: CreateResourceInput = {
   room: "",
+  defaultCapacity: "1",
 };
 
 function friendlyError(error: ServiceApiError | null): string | null {
@@ -41,6 +44,8 @@ export function AdminResourcesPage() {
   const [error, setError] = useState<ServiceApiError | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState<CreateResourceInput>(initialForm);
+  const [statusDrafts, setStatusDrafts] = useState<Record<string, ResourceStatus>>({});
+  const [updatingResourceCode, setUpdatingResourceCode] = useState<string | null>(null);
 
   const previewPayload = buildCreateResourcePayload(form);
 
@@ -51,6 +56,7 @@ export function AdminResourcesPage() {
       await ensureResourceAdminAccess(authorizedRequest);
       const data = await listResources(authorizedRequest);
       setResources(data);
+      setStatusDrafts(Object.fromEntries(data.map((resource) => [resource.resourceCode, resource.status])));
     } catch (err) {
       if (err instanceof ServiceApiError) {
         setError(err);
@@ -97,6 +103,33 @@ export function AdminResourcesPage() {
     }
   };
 
+  const onUpdateStatus = async (resource: ResourceSummary) => {
+    const nextStatus = statusDrafts[resource.resourceCode] ?? resource.status;
+    if (nextStatus === resource.status) {
+      setSuccess(`${resource.name} is already ${nextStatus}.`);
+      return;
+    }
+
+    setSuccess(null);
+    setError(null);
+    setUpdatingResourceCode(resource.resourceCode);
+
+    try {
+      await ensureResourceAdminAccess(authorizedRequest);
+      await updateResourceStatus(authorizedRequest, resource.resourceCode, nextStatus);
+      setSuccess(`${resource.name} updated to ${nextStatus}.`);
+      await loadResources();
+    } catch (err) {
+      if (err instanceof ServiceApiError) {
+        setError(err);
+      } else {
+        setError(new ServiceApiError(500, "Unexpected resource service error.", err));
+      }
+    } finally {
+      setUpdatingResourceCode(null);
+    }
+  };
+
   const errorMessage = friendlyError(error);
   const generatedCode = previewPayload.resourceCode || "Generated after room detail";
 
@@ -133,15 +166,30 @@ export function AdminResourcesPage() {
                 <Input
                   id="resource-room"
                   value={form.room}
-                  onChange={(event) => setForm({ room: event.target.value })}
+                  onChange={(event) => setForm((prev) => ({ ...prev, room: event.target.value }))}
                   placeholder="A101 or Consultation Room 2"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="resource-capacity">Capacity</Label>
+                <Input
+                  id="resource-capacity"
+                  type="number"
+                  min={1}
+                  value={form.defaultCapacity}
+                  onChange={(event) => setForm((prev) => ({ ...prev, defaultCapacity: event.target.value }))}
                   required
                 />
               </div>
 
               <div className="rounded-md border border-border bg-background/70 px-3 py-3 text-sm text-muted-foreground">
                 <p className="font-medium text-foreground">Defaults</p>
-                <p className="mt-1">NUS, University Health Centre - active clinic room - capacity 1</p>
+                <p className="mt-1">
+                  NUS, University Health Centre - active clinic room - capacity{" "}
+                  {previewPayload.defaultCapacity}
+                </p>
                 <p className="mt-1">Resource code: {generatedCode}</p>
               </div>
 
@@ -170,6 +218,35 @@ export function AdminResourcesPage() {
                     {resource.resourceCode} - {resource.location} - {resource.status} - cap{" "}
                     {resource.defaultCapacity}
                   </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <div className="min-w-36 space-y-1">
+                      <Label htmlFor={`resource-status-${resource.resourceCode}`}>Status</Label>
+                      <select
+                        id={`resource-status-${resource.resourceCode}`}
+                        value={statusDrafts[resource.resourceCode] ?? resource.status}
+                        onChange={(event) =>
+                          setStatusDrafts((prev) => ({
+                            ...prev,
+                            [resource.resourceCode]: event.target.value as ResourceStatus,
+                          }))
+                        }
+                        className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="maintenance">Maintenance</option>
+                      </select>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingResourceCode === resource.resourceCode}
+                      onClick={() => void onUpdateStatus(resource)}
+                    >
+                      {updatingResourceCode === resource.resourceCode ? "Updating..." : "Update"}
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
