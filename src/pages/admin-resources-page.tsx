@@ -7,23 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/use-auth";
 import {
+  buildCreateResourcePayload,
   createResource,
+  ensureResourceAdminAccess,
   listResources,
+  validateCreateResourcePayload,
   type CreateResourceInput,
   type ResourceSummary,
 } from "@/features/resources/resource-api";
 import { ServiceApiError } from "@/lib/service-error";
 
 const initialForm: CreateResourceInput = {
-  name: "",
-  type: "consultation",
-  locationSite: "",
-  defaultCapacity: 1,
-  slotDurationMin: 30,
+  room: "",
 };
 
 function friendlyError(error: ServiceApiError | null): string | null {
   if (!error) return null;
+  if (error.code === "RESOURCE_CONFLICT" || error.status === 409) {
+    return "A room with this generated code already exists.";
+  }
   if (error.status === 403) return "You are logged in but not allowed to manage resources.";
   if (error.status === 404) return "Resource endpoint not found. Check service route config.";
   if (error.status === 401) return "Session expired. Please sign in as admin again.";
@@ -40,10 +42,13 @@ export function AdminResourcesPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState<CreateResourceInput>(initialForm);
 
+  const previewPayload = buildCreateResourcePayload(form);
+
   const loadResources = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      await ensureResourceAdminAccess(authorizedRequest);
       const data = await listResources(authorizedRequest);
       setResources(data);
     } catch (err) {
@@ -63,13 +68,22 @@ export function AdminResourcesPage() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaving(true);
     setSuccess(null);
     setError(null);
 
+    const payload = buildCreateResourcePayload(form);
+    const validationError = validateCreateResourcePayload(payload);
+    if (validationError) {
+      setError(new ServiceApiError(400, validationError, { error: validationError }));
+      return;
+    }
+
+    setSaving(true);
+
     try {
-      await createResource(authorizedRequest, form);
-      setSuccess("Resource created successfully.");
+      await ensureResourceAdminAccess(authorizedRequest);
+      await createResource(authorizedRequest, payload);
+      setSuccess(`${payload.name} is ready for booking.`);
       setForm(initialForm);
       await loadResources();
     } catch (err) {
@@ -83,17 +97,20 @@ export function AdminResourcesPage() {
     }
   };
 
+  const errorMessage = friendlyError(error);
+  const generatedCode = previewPayload.resourceCode || "Generated after room detail";
+
   return (
     <div className="space-y-6">
       <PageHeader
         badge="Admin only"
         title="Resource Management"
-        description="Create and maintain resources that users can book."
+        description="Add rooms that users can book."
       />
 
-      {friendlyError(error) ? (
+      {errorMessage ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {friendlyError(error)}
+          {errorMessage}
         </div>
       ) : null}
 
@@ -103,79 +120,33 @@ export function AdminResourcesPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Create resource</CardTitle>
-            <CardDescription>Admin-only create flow for resource service.</CardDescription>
+            <CardTitle>Create bookable room</CardTitle>
+            <CardDescription>Rooms are saved as active clinic resources with 30-minute slots.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={onSubmit}>
               <div className="space-y-2">
-                <Label htmlFor="resource-name">Name</Label>
+                <Label htmlFor="resource-room">Room detail</Label>
                 <Input
-                  id="resource-name"
-                  value={form.name}
-                  onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                  placeholder="Clinic Room A"
+                  id="resource-room"
+                  value={form.room}
+                  onChange={(event) => setForm({ room: event.target.value })}
+                  placeholder="A101 or Consultation Room 2"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="resource-type">Type</Label>
-                <Input
-                  id="resource-type"
-                  value={form.type}
-                  onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
-                  placeholder="consultation"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="resource-site">Location Site</Label>
-                <Input
-                  id="resource-site"
-                  value={form.locationSite}
-                  onChange={(event) => setForm((prev) => ({ ...prev, locationSite: event.target.value }))}
-                  placeholder="North Clinic"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="resource-capacity">Default Capacity</Label>
-                  <Input
-                    id="resource-capacity"
-                    type="number"
-                    min={1}
-                    value={form.defaultCapacity}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, defaultCapacity: Number(event.target.value || 1) }))
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="resource-duration">Slot Duration (min)</Label>
-                  <Input
-                    id="resource-duration"
-                    type="number"
-                    min={5}
-                    value={form.slotDurationMin}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, slotDurationMin: Number(event.target.value || 30) }))
-                    }
-                    required
-                  />
-                </div>
+              <div className="rounded-md border border-border bg-background/70 px-3 py-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Defaults</p>
+                <p className="mt-1">NUS, University Health Centre - active clinic room - capacity 1</p>
+                <p className="mt-1">Resource code: {generatedCode}</p>
               </div>
 
               <Button type="submit" className="w-full" disabled={saving}>
-                {saving ? "Creating..." : "Create resource"}
+                {saving ? "Creating..." : "Create room"}
               </Button>
             </form>
           </CardContent>
@@ -183,20 +154,21 @@ export function AdminResourcesPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Existing resources</CardTitle>
+            <CardTitle>Existing rooms</CardTitle>
             <CardDescription>{loading ? "Loading..." : `${resources.length} resource(s)`}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {loading ? (
-              <p className="text-sm text-muted-foreground">Loading resources...</p>
+              <p className="text-sm text-muted-foreground">Loading rooms...</p>
             ) : resources.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No resources returned by service.</p>
+              <p className="text-sm text-muted-foreground">No rooms returned by service.</p>
             ) : (
               resources.slice(0, 8).map((resource) => (
                 <div key={resource.id} className="rounded-md border border-border bg-background/70 px-3 py-2">
                   <p className="text-sm font-medium text-foreground">{resource.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {resource.location} • {resource.type} • cap {resource.defaultCapacity}
+                    {resource.resourceCode} - {resource.location} - {resource.status} - cap{" "}
+                    {resource.defaultCapacity}
                   </p>
                 </div>
               ))

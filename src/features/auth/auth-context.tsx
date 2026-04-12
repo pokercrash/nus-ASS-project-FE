@@ -112,6 +112,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     async (input: RequestInfo | URL, init: RequestInit = {}) => {
       const execute = async (token: string | null) => {
         const headers = new Headers(init.headers ?? {});
+        if (typeof init.body === "string" && !headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
         if (token) {
           headers.set("Authorization", `Bearer ${token}`);
         }
