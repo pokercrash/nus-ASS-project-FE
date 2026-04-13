@@ -141,6 +141,26 @@ export function ResourcesPage() {
 
   const confirmBooking = () => {
     if (!selected) return;
+
+    const newAppointment = {
+      id: `a-${Date.now()}`,
+      service: selected.service.category,
+      provider: "To be assigned",
+      location: selected.service.location.concat(", " + selected.service.name),
+      date: `Today, ${selected.slot}`,
+      status: "Upcoming" as const,
+    };
+
+    try {
+      const saved = sessionStorage.getItem("confirmedAppointments");
+      const appointments = saved ? JSON.parse(saved) : [];
+      appointments.push(newAppointment);
+      sessionStorage.setItem("confirmedAppointments", JSON.stringify(appointments));
+      console.log("Appointment confirmed and saved:", newAppointment);
+    } catch (error) {
+      console.error("Failed to save appointment:", error);
+    }
+
     setConfirmed(true);
   };
 

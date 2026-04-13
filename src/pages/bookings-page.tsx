@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { CalendarClock, MapPin, UserRound } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -62,10 +62,72 @@ function statusVariant(status: AppointmentStatus): "success" | "muted" | "defaul
 
 export function BookingsPage() {
   const [filter, setFilter] = useState<AppointmentStatus>("Upcoming");
+  const [allAppointments, setAllAppointments] =
+    useState<Appointment[]>(appointments);
+
+  const cancelAppointment = (appointment: Appointment) => {
+    const newAppointment = {
+      id: appointment.id,
+      service: appointment.service,
+      provider: "To be assigned",
+      location: appointment.location.concat(", " + appointment.service),
+      date: appointment.date,
+      status: "Cancelled" as const,
+    };
+
+    try {
+      const saved = sessionStorage.getItem("confirmedAppointments");
+      const appointments = saved ? JSON.parse(saved) : [];
+      const updatedAppointments = appointments.map((appt: Appointment) =>
+        appt.id === newAppointment.id ? { ...appt, ...newAppointment } : appt,
+      );
+
+      sessionStorage.setItem(
+        "confirmedAppointments",
+        JSON.stringify(updatedAppointments),
+      );
+      console.log("Appointment cancelled:", newAppointment);
+    } catch (error) {
+      console.error("Failed to cancel appointment:", error);
+    }
+    reloadAppointments();
+  };
+
+  const reloadAppointments = () => {
+    const savedAppointments = sessionStorage.getItem("confirmedAppointments");
+    if (savedAppointments) {
+      try {
+        const confirmed: Appointment[] = JSON.parse(savedAppointments);
+        setAllAppointments([ ...confirmed]);
+      } catch (error) {
+        console.error("Failed to load saved appointments:", error);
+      }
+    }
+  };
+
+  const firstSetSessionAppointments = () => {
+    try {
+      const saved = sessionStorage.getItem("confirmedAppointments");
+      const temp = saved ? JSON.parse(saved) : appointments;
+      sessionStorage.setItem(
+        "confirmedAppointments",
+        JSON.stringify(temp),
+      );
+      console.log("Appointment confirmed and saved:", temp);
+    } catch (error) {
+      console.error("Failed to save appointment:", error);
+    }
+  };
+
+  useEffect(() => {
+    firstSetSessionAppointments();
+    reloadAppointments();
+    console.log(allAppointments);
+  }, []);
 
   const filtered = useMemo(
-    () => appointments.filter((item) => item.status === filter),
-    [filter]
+    () => allAppointments.filter((item) => item.status === filter),
+    [filter, allAppointments],
   );
 
   return (
@@ -130,7 +192,12 @@ export function BookingsPage() {
                     <Button size="sm" variant="outline" className="card-lift">
                       Reschedule
                     </Button>
-                    <Button size="sm" variant="outline" className="card-lift">
+                    <Button
+                      onClick={() => cancelAppointment(item)}
+                      size="sm"
+                      variant="outline"
+                      className="card-lift"
+                    >
                       Cancel
                     </Button>
                   </div>
