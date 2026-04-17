@@ -1,8 +1,10 @@
-const DEFAULT_AUTH_BASE_URL = import.meta.env.PROD ? "/auth-api" : "http://localhost:8080";
-const DEFAULT_RESOURCE_BASE_URL = import.meta.env.PROD ? "/resource-api" : "http://localhost:8081";
+const isProduction = import.meta.env.PROD;
 
 export const env = {
-  authBaseUrl: (import.meta.env.VITE_AUTH_API_BASE_URL as string | undefined) ?? DEFAULT_AUTH_BASE_URL,
-  resourceBaseUrl:
-    (import.meta.env.VITE_RESOURCE_API_BASE_URL as string | undefined) ?? DEFAULT_RESOURCE_BASE_URL,
+  authBaseUrl: isProduction
+    ? "/auth-api"
+    : (import.meta.env.VITE_AUTH_API_BASE_URL as string | undefined) ?? "http://localhost:8080",
+  resourceBaseUrl: isProduction
+    ? "/resource-api"
+    : (import.meta.env.VITE_RESOURCE_API_BASE_URL as string | undefined) ?? "http://localhost:8081",
 };
