@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/auth-api/:path*",
-      "destination": "/api/auth-proxy/:path*"
+      "destination": "http://go-auth-service-alb-192557461.ap-southeast-1.elb.amazonaws.com/:path*"
     },
     {
       "source": "/resource-api/:path*",
-      "destination": "/api/resource-proxy/:path*"
+      "destination": "http://resource-service-alb-443948422.ap-southeast-1.elb.amazonaws.com/:path*"
     },
     {
       "source": "/:path*",
