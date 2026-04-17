@@ -9,6 +9,7 @@ import { AccountPage } from "@/pages/deployment-page";
 import { CapacityPage } from "@/pages/capacity-page";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { LandingPage } from "@/pages/landing-page";
+import { LoadBalancerDemoPage } from "@/pages/load-balancer-demo-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { NotificationsPage } from "@/pages/notifications-page";
@@ -26,6 +27,8 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/lb-demo" element={<LoadBalancerDemoPage />} />
+      <Route path="/load-balancer-demo" element={<LoadBalancerDemoPage />} />
 
       <Route element={<PublicUserRoute />}>
         <Route path="/login" element={<LoginPage />} />

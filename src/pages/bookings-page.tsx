@@ -122,7 +122,6 @@ export function BookingsPage() {
   useEffect(() => {
     firstSetSessionAppointments();
     reloadAppointments();
-    console.log(allAppointments);
   }, []);
 
   const filtered = useMemo(
